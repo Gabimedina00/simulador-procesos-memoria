@@ -52,9 +52,9 @@ describe("Proceso - Ejecucion y quantum (RF07)", () => {
     const proceso = procesoEnCpu(2);
 
     proceso.ejecutarTick();
-    expect(proceso.haTerminado()).toBe(false);
+    expect(proceso.terminado()).toBe(false);
     proceso.ejecutarTick();
-    expect(proceso.haTerminado()).toBe(true);
+    expect(proceso.terminado()).toBe(true);
 
     proceso.terminar();
     expect(proceso.getEstado()).toBe(EstadoProceso.Terminado);
@@ -78,5 +78,69 @@ describe("Proceso - Ejecucion y quantum (RF07)", () => {
 
     expect(() => proceso.ejecutarTick()).toThrow("Transicion invalida");  // no esta en CPU
     expect(() => proceso.despachar()).toThrow("Transicion invalida");     // todavia no fue admitido
+  });
+});
+
+// RF08 - Simular Entrada y Salida
+describe("Proceso - Entrada/Salida (RF08)", () => {
+  function procesoEnCpu(cpu: number): Proceso {
+    const proceso = new Proceso(1, 200, cpu);
+    proceso.admitir();
+    proceso.despachar();
+    return proceso;
+  }
+
+  it("rechaza eventos de E/S invalidos", () => {
+    const proceso = new Proceso(1, 200, 5);
+
+    expect(() => proceso.programarES(0, 2)).toThrow("Ticks de E/S debe ser un entero positivo");
+    expect(() => proceso.programarES(5, 2)).toThrow("Ticks de E/S debe ser menor que la CPU total");
+    expect(() => proceso.programarES(2, 0)).toThrow("Duracion de E/S debe ser un entero positivo");
+  });
+
+  it("no se bloquea antes de consumir los ticks del evento", () => {
+    const proceso = procesoEnCpu(5);
+    proceso.programarES(2, 3);
+
+    proceso.ejecutarTick();
+
+    expect(proceso.debeBloquearse()).toBe(false);
+  });
+
+  it("se bloquea al consumir los ticks del evento y conserva su CPU restante", () => {
+    const proceso = procesoEnCpu(5);
+    proceso.programarES(1, 2);
+
+    proceso.ejecutarTick();
+    expect(proceso.debeBloquearse()).toBe(true);
+
+    proceso.bloquear();
+    expect(proceso.getEstado()).toBe(EstadoProceso.Bloqueado);
+    expect(proceso.getCpuRestante()).toBe(4);
+    expect(proceso.getTiempoBloqueoRestante()).toBe(2);
+  });
+
+  it("no consume CPU mientras esta bloqueado", () => {
+    const proceso = procesoEnCpu(5);
+    proceso.programarES(1, 2);
+    proceso.ejecutarTick();
+    proceso.bloquear();
+
+    expect(() => proceso.ejecutarTick()).toThrow("Transicion invalida");
+    expect(proceso.getCpuRestante()).toBe(4);
+  });
+
+  it("vuelve a Listo cuando vence el tiempo de bloqueo", () => {
+    const proceso = procesoEnCpu(5);
+    proceso.programarES(1, 2);
+    proceso.ejecutarTick();
+    proceso.bloquear();
+
+    proceso.avanzarBloqueo();
+    expect(() => proceso.desbloquear()).toThrow("El bloqueo todavia no vencio");
+
+    proceso.avanzarBloqueo();
+    proceso.desbloquear();
+    expect(proceso.getEstado()).toBe(EstadoProceso.Listo);
   });
 });

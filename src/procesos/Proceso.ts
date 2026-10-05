@@ -9,7 +9,9 @@ export class Proceso {
   private cpuRestante: number;
   private estado: EstadoProceso;
   private quantumConsumido: number;
-
+  private ticksParaES: number | null = null;   // tras cuantos ticks de CPU se dispara la E/S
+  private duracionES = 0;                      // cuantos ticks dura el bloqueo
+  private tiempoBloqueoRestante = 0;           // temporizador mientras esta bloqueado
   // Valida los datos al crear: un proceso nunca nace en estado invalido (RF02)
   constructor(pid: number, memoriaRequerida: number, cpuTotal: number) {
     Proceso.validarEnteroPositivo(pid, "PID");
@@ -82,4 +84,48 @@ export class Proceso {
   terminado(): boolean {
     return this.cpuRestante === 0;
   }
+
+  getTiempoBloqueoRestante(): number { return this.tiempoBloqueoRestante; }
+
+  // Programa un evento de E/S determinado desde los tests (RF08).
+  // ticksDeCpu debe ser menor que la CPU total: si no, el proceso terminaria antes.
+  programarES(ticksDeCpu: number, duracion: number): void {
+    Proceso.validarEnteroPositivo(ticksDeCpu, "Ticks de E/S");
+    Proceso.validarEnteroPositivo(duracion, "Duracion de E/S");
+    if (ticksDeCpu >= this.cpuTotal) {
+      throw new Error("Ticks de E/S debe ser menor que la CPU total");
+    }
+    this.ticksParaES = ticksDeCpu;
+    this.duracionES = duracion;
+  }
+
+  // True si ya consumio los ticks que disparan la E/S
+  debeBloquearse(): boolean {
+    const cpuConsumida = this.cpuTotal - this.cpuRestante;
+    return this.ticksParaES === cpuConsumida;
+  }
+
+  // Ejecutando -> Bloqueado: libera la CPU y arranca el temporizador (RF08)
+  bloquear(): void {
+    this.exigirEstado(EstadoProceso.Ejecutando);
+    this.estado = EstadoProceso.Bloqueado;
+    this.tiempoBloqueoRestante = this.duracionES;
+    this.ticksParaES = null;   // el evento ya se consumio
+  }
+
+  // Descuenta un tick del bloqueo
+  avanzarBloqueo(): void {
+    this.exigirEstado(EstadoProceso.Bloqueado);
+    this.tiempoBloqueoRestante--;
+  }
+
+  // Bloqueado -> Listo: solo cuando el temporizador llego a cero (RF08)
+  desbloquear(): void {
+    this.exigirEstado(EstadoProceso.Bloqueado);
+    if (this.tiempoBloqueoRestante > 0) {
+      throw new Error("El bloqueo todavia no vencio");
+    }
+    this.estado = EstadoProceso.Listo;
+  }
 }
+
