@@ -6,3 +6,4 @@ export enum EstadoProceso {
   Bloqueado = "Bloqueado",
   Terminado = "Terminado"
 }
+// Enum define un conjunto de valores con nombre.

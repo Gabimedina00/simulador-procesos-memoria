@@ -37,4 +37,49 @@ export class Proceso {
   getCpuRestante(): number { return this.cpuRestante; }
   getEstado(): EstadoProceso { return this.estado; }
   getQuantumConsumido(): number { return this.quantumConsumido; }
+
+  // Verifica que el proceso este en el estado esperado antes de cambiarlo.
+  // Asi nadie puede saltarse las reglas del ciclo de vida.
+  private exigirEstado(esperado: EstadoProceso): void {
+    if (this.estado !== esperado) {
+      throw new Error(`Transicion invalida: esta en ${this.estado}, se esperaba ${esperado}`);
+    }
+  }
+
+  // Nuevo -> Listo: se le asigno memoria y entra a la cola de listos (RF03)
+  admitir(): void {
+    this.exigirEstado(EstadoProceso.Nuevo);
+    this.estado = EstadoProceso.Listo;
+  }
+
+  // Listo -> Ejecutando: el planificador le da la CPU y reinicia su quantum (RF07)
+  despachar(): void {
+    this.exigirEstado(EstadoProceso.Listo);
+    this.estado = EstadoProceso.Ejecutando;
+    this.quantumConsumido = 0;
+  }
+
+  // Consume una unidad de CPU: un tick de ejecucion (RF07)
+  ejecutarTick(): void {
+    this.exigirEstado(EstadoProceso.Ejecutando);
+    this.cpuRestante--;
+    this.quantumConsumido++;
+  }
+
+  // Ejecutando -> Listo: se le agoto el quantum y hay otros esperando (RF07)
+  expulsar(): void {
+    this.exigirEstado(EstadoProceso.Ejecutando);
+    this.estado = EstadoProceso.Listo;
+  }
+
+  // Ejecutando -> Terminado: ya no necesita mas CPU (RF07)
+  terminar(): void {
+    this.exigirEstado(EstadoProceso.Ejecutando);
+    this.estado = EstadoProceso.Terminado;
+  }
+
+  // Indica si consumio toda su CPU
+  terminado(): boolean {
+    return this.cpuRestante === 0;
+  }
 }
