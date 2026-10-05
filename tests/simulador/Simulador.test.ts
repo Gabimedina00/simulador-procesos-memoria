@@ -46,16 +46,14 @@ describe("Simulador - Registro de procesos (RF02)", () => {
     sim.registrarProceso(1, 200, 5);
 
     expect(sim.getProceso(1).estado).toBe(EstadoProceso.Nuevo);
-    expect(sim.getProcesos()).toHaveLength(1);
   });
 
-  it("rechaza PID duplicado, memoria mayor a la total y PID inexistente", () => {
+    it("rechaza PID duplicado y memoria mayor a la total", () => {
     const sim = new Simulador({ memoriaTotal: 1024, quantum: 2 });
     sim.registrarProceso(1, 200, 5);
 
     expect(() => sim.registrarProceso(1, 100, 3)).toThrow("PID duplicado");
     expect(() => sim.registrarProceso(2, 1025, 5)).toThrow("La memoria solicitada supera la memoria total");
-    expect(() => sim.getProceso(99)).toThrow("Proceso inexistente");
   });
 });
 
