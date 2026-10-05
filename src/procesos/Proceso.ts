@@ -1,8 +1,9 @@
 import { EstadoProceso } from "./EstadoProceso.js";
+import { IProceso, VistaProceso } from "./IProceso.js";
 
-// Representa un proceso del sistema. Protege sus datos (private) y
-// solo permite leerlos mediante getters.
-export class Proceso {
+// Representa un proceso del sistema (su PCB). Protege sus datos (private) y
+// solo cambia de estado mediante metodos que validan las reglas del dominio.
+export class Proceso implements IProceso {
   private readonly pid: number;
   private readonly memoriaRequerida: number;
   private readonly cpuTotal: number;
@@ -12,6 +13,7 @@ export class Proceso {
   private ticksParaES: number | null = null;   // tras cuantos ticks de CPU se dispara la E/S
   private duracionES = 0;                      // cuantos ticks dura el bloqueo
   private tiempoBloqueoRestante = 0;           // temporizador mientras esta bloqueado
+
   // Valida los datos al crear: un proceso nunca nace en estado invalido (RF02)
   constructor(pid: number, memoriaRequerida: number, cpuTotal: number) {
     Proceso.validarEnteroPositivo(pid, "PID");
@@ -39,18 +41,25 @@ export class Proceso {
   getCpuRestante(): number { return this.cpuRestante; }
   getEstado(): EstadoProceso { return this.estado; }
   getQuantumConsumido(): number { return this.quantumConsumido; }
+  getTiempoBloqueoRestante(): number { return this.tiempoBloqueoRestante; }
 
-  // Verifica que el proceso este en el estado esperado antes de cambiarlo.
+  // Verifica que el proceso este en alguno de los estados esperados antes de cambiarlo.
   // Asi nadie puede saltarse las reglas del ciclo de vida.
-  private exigirEstado(esperado: EstadoProceso): void {
-    if (this.estado !== esperado) {
-      throw new Error(`Transicion invalida: esta en ${this.estado}, se esperaba ${esperado}`);
+  private exigirEstado(...esperados: EstadoProceso[]): void {
+    if (!esperados.includes(this.estado)) {
+      throw new Error(`Transicion invalida: esta en ${this.estado}, se esperaba ${esperados.join(" o ")}`);
     }
   }
 
-  // Nuevo -> Listo: se le asigno memoria y entra a la cola de listos (RF03)
-  admitir(): void {
+  // Nuevo -> Esperando Memoria: no habia un hueco suficiente (RF03)
+  esperarMemoria(): void {
     this.exigirEstado(EstadoProceso.Nuevo);
+    this.estado = EstadoProceso.EsperandoMemoria;
+  }
+
+  // Nuevo o Esperando Memoria -> Listo: se le asigno memoria (RF03)
+  admitir(): void {
+    this.exigirEstado(EstadoProceso.Nuevo, EstadoProceso.EsperandoMemoria);
     this.estado = EstadoProceso.Listo;
   }
 
@@ -68,6 +77,12 @@ export class Proceso {
     this.quantumConsumido++;
   }
 
+  // Sigue en CPU con un quantum nuevo: se le agoto pero no hay otros Listos (RF07)
+  renovarQuantum(): void {
+    this.exigirEstado(EstadoProceso.Ejecutando);
+    this.quantumConsumido = 0;
+  }
+
   // Ejecutando -> Listo: se le agoto el quantum y hay otros esperando (RF07)
   expulsar(): void {
     this.exigirEstado(EstadoProceso.Ejecutando);
@@ -77,6 +92,7 @@ export class Proceso {
   // Ejecutando -> Terminado: ya no necesita mas CPU (RF07)
   terminar(): void {
     this.exigirEstado(EstadoProceso.Ejecutando);
+    if (!this.terminado()) throw new Error("El proceso todavia tiene CPU restante");
     this.estado = EstadoProceso.Terminado;
   }
 
@@ -85,15 +101,17 @@ export class Proceso {
     return this.cpuRestante === 0;
   }
 
-  getTiempoBloqueoRestante(): number { return this.tiempoBloqueoRestante; }
-
-  // Programa un evento de E/S determinado desde los tests (RF08).
-  // ticksDeCpu debe ser menor que la CPU total: si no, el proceso terminaria antes.
+  // Programa un evento de E/S deterministico desde los tests (RF08).
+  // Debe dispararse despues de lo ya consumido y antes de terminar: asi la
+  // finalizacion y el bloqueo nunca coinciden (la finalizacion tiene prioridad).
   programarES(ticksDeCpu: number, duracion: number): void {
     Proceso.validarEnteroPositivo(ticksDeCpu, "Ticks de E/S");
     Proceso.validarEnteroPositivo(duracion, "Duracion de E/S");
     if (ticksDeCpu >= this.cpuTotal) {
       throw new Error("Ticks de E/S debe ser menor que la CPU total");
+    }
+    if (ticksDeCpu <= this.cpuTotal - this.cpuRestante) {
+      throw new Error("El evento de E/S ya no puede dispararse");
     }
     this.ticksParaES = ticksDeCpu;
     this.duracionES = duracion;
@@ -127,5 +145,17 @@ export class Proceso {
     }
     this.estado = EstadoProceso.Listo;
   }
-}
 
+  // Devuelve una copia de solo lectura de sus datos (doble encapsulamiento)
+  aVista(): VistaProceso {
+    return {
+      pid: this.pid,
+      memoriaRequerida: this.memoriaRequerida,
+      cpuTotal: this.cpuTotal,
+      cpuRestante: this.cpuRestante,
+      estado: this.estado,
+      quantumConsumido: this.quantumConsumido,
+      tiempoBloqueoRestante: this.tiempoBloqueoRestante,
+    };
+  }
+}
