@@ -61,3 +61,39 @@ describe("BloqueMemoria (RF04)", () => {
     expect(() => bloque.dividir(0)).toThrow("Division invalida");
   });
 });
+// RF05 - Coalescencia a nivel de bloque
+describe("BloqueMemoria - Fusion (RF05)", () => {
+  it("absorbe a su vecino libre contiguo sumando su tamaño", () => {
+    const izquierdo = new BloqueMemoria(0, 100);
+    const derecho = new BloqueMemoria(100, 300);
+
+    izquierdo.absorber(derecho);
+
+    expect(izquierdo.getInicio()).toBe(0);
+    expect(izquierdo.getTamano()).toBe(400);
+  });
+
+  it("no fusiona si alguno esta ocupado", () => {
+    const izquierdo = new BloqueMemoria(0, 100);
+    const derecho = new BloqueMemoria(100, 300);
+    derecho.asignar(1);
+
+    expect(() => izquierdo.absorber(derecho)).toThrow("Solo se fusionan bloques libres");
+  });
+
+  it("no fusiona bloques que no son contiguos", () => {
+    const izquierdo = new BloqueMemoria(0, 100);
+    const lejano = new BloqueMemoria(500, 100);
+
+    expect(() => izquierdo.absorber(lejano)).toThrow("Los bloques no son contiguos");
+  });
+
+  it("devuelve una vista que no permite modificar el bloque", () => {
+    const bloque = new BloqueMemoria(0, 1024);
+    const vista = bloque.aVista() as { tamano: number };
+
+    vista.tamano = 1;
+
+    expect(bloque.getTamano()).toBe(1024);
+  });
+});

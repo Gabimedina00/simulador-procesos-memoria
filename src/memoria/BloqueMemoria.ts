@@ -1,7 +1,9 @@
+import { IBloqueMemoria, VistaBloque } from "./IBloqueMemoria.js";
+
 // Tramo contiguo de memoria: tiene un inicio, un tamaño y puede estar
 // libre o asignado a un proceso (guardamos solo su PID para no acoplar
 // la memoria a la clase Proceso).
-export class BloqueMemoria {
+export class BloqueMemoria implements IBloqueMemoria {
   private readonly inicio: number;
   private tamano: number;
   private pid: number | null = null;
@@ -38,5 +40,18 @@ export class BloqueMemoria {
     const sobrante = new BloqueMemoria(this.inicio + tamanoPedido, this.tamano - tamanoPedido);
     this.tamano = tamanoPedido;
     return sobrante;
+  }
+
+  // Coalescencia (RF05): suma a este bloque el vecino libre de su derecha.
+  // Solo se fusionan bloques libres y contiguos; nunca se mueve un bloque ocupado.
+  absorber(vecino: BloqueMemoria): void {
+    if (!this.estaLibre() || !vecino.estaLibre()) throw new Error("Solo se fusionan bloques libres");
+    if (vecino.getInicio() !== this.inicio + this.tamano) throw new Error("Los bloques no son contiguos");
+    this.tamano += vecino.getTamano();
+  }
+
+  // Copia de solo lectura para mostrar el mapa sin exponer el objeto interno
+  aVista(): VistaBloque {
+    return { inicio: this.inicio, tamano: this.tamano, pid: this.pid };
   }
 }
