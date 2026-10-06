@@ -73,9 +73,8 @@ El comportamiento se validó contra el `main.py` de la cátedra de Sistemas Oper
 ## Diagramas
 
 - [Diagrama de clases](docs/uml/clases.md)
-- [Diagrama de estados](docs/uml/estados.md)
-- [Secuencia 1: admisión y asignación de memoria (RF03, RF04)](docs/secuencia/01-admision-asignacion.md)
-- [Secuencia 2: tick de Round Robin con finalización y coalescencia (RF07, RF05)](docs/secuencia/02-tick-round-robin.md)
-- [Secuencia 3: bloqueo por E/S y retorno (RF08)](docs/secuencia/03-bloqueo-es.md)
+- [Secuencia 1: admisión y asignación de memoria (RF03, RF04)](docs/drawio/01-admision.png)
+- [Secuencia 2: CPU y finalización (RF07, RF05)](docs/drawio/02-cpu-finalizacion.png)
+- [Secuencia 3: entrada/salida (RF08)](docs/drawio/03-entrada-salida.png)
+- [Diagrama de estados](docs/drawio/04-estados.png)
 
-Están en Mermaid: GitHub los muestra dibujados y se editan como texto.
