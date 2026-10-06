@@ -72,7 +72,7 @@ El comportamiento se validó contra el `main.py` de la cátedra de Sistemas Oper
 
 ## Diagramas
 
-- [Diagrama de clases](docs/uml/clases.md)
+- [Diagrama de clases](docs/drawio/clases.md)
 - [Secuencia 1: admisión y asignación de memoria (RF03, RF04)](docs/drawio/01-admision.png)
 - [Secuencia 2: CPU y finalización (RF07, RF05)](docs/drawio/02-cpu-finalizacion.png)
 - [Secuencia 3: entrada/salida (RF08)](docs/drawio/03-entrada-salida.png)
